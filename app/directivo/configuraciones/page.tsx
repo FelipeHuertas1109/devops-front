@@ -7,20 +7,18 @@ import Navbar from '../../../components/Navbar';
 import DirectivoConfiguraciones from '../../../components/DirectivoConfiguraciones';
 
 export default function ConfiguracionesPage() {
-  const { user, token, loading } = useAuth();
+  const { user, token } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
-    if (!loading) {
-      if (!token || !user) {
-        router.push('/');
-      } else if (user.tipo_usuario !== 'DIRECTIVO') {
-        router.push('/');
-      }
+    if (!token || !user) {
+      router.push('/');
+    } else if (user.tipo_usuario !== 'DIRECTIVO') {
+      router.push('/');
     }
-  }, [user, token, loading, router]);
+  }, [user, token, router]);
 
-  if (loading || !user || user.tipo_usuario !== 'DIRECTIVO') {
+  if (!user || user.tipo_usuario !== 'DIRECTIVO') {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
