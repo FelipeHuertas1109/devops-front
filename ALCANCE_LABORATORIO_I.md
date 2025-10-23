@@ -1,6 +1,6 @@
 # 🎯 Alcance del Laboratorio I
 
-## ✅ Funcionalidades Implementadas
+## ✅ Funcionalidades Implementadas.
 
 Este proyecto frontend ahora está alineado con el **Laboratorio I** del backend, que incluye únicamente:
 
