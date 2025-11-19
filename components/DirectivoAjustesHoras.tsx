@@ -127,6 +127,15 @@ export default function DirectivoAjustesHoras() {
       Swal.fire({ icon: 'warning', title: 'Faltan datos', text: 'Completa todos los campos requeridos' });
       return;
     }
+    // Validar rango de horas (-24 a 24, no puede ser 0)
+    if (form.cantidad_horas === 0) {
+      Swal.fire({ icon: 'warning', title: 'Error de validación', text: 'La cantidad de horas no puede ser 0' });
+      return;
+    }
+    if (form.cantidad_horas < -24 || form.cantidad_horas > 24) {
+      Swal.fire({ icon: 'warning', title: 'Error de validación', text: 'La cantidad de horas debe estar entre -24.00 y 24.00' });
+      return;
+    }
     try {
       setLoading(true);
       const payload: CrearAjusteHorasRequest = {
@@ -350,6 +359,7 @@ export default function DirectivoAjustesHoras() {
                   <div>
                     <label className="block text-xs font-semibold mb-1 text-black">Horas (+/-)</label>
                     <input type="number" step="0.25" min={-24} max={24} className="w-full border border-gray-300 rounded px-3 py-2 text-sm text-black" value={form.cantidad_horas} onChange={(e) => setForm(prev => ({ ...prev, cantidad_horas: Number(e.target.value) }))} />
+                    <p className="text-xs text-gray-600 mt-1">Rango: -24.00 a 24.00 (no puede ser 0)</p>
                   </div>
                 </div>
                 <div>

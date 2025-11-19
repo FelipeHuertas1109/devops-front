@@ -35,6 +35,14 @@ export class AjustesHorasService {
   }
 
   static async crear(payload: CrearAjusteHorasRequest, token: string): Promise<CrearAjusteHorasResponse> {
+    // Validar rango de horas (-24 a 24, no puede ser 0)
+    if (payload.cantidad_horas === 0) {
+      throw new Error('La cantidad de horas no puede ser 0');
+    }
+    if (payload.cantidad_horas < -24 || payload.cantidad_horas > 24) {
+      throw new Error('La cantidad de horas debe estar entre -24.00 y 24.00');
+    }
+
     const url = `${this.baseUrl}/directivo/ajustes-horas/`;
     const response = await fetch(url, {
       method: 'POST',
