@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { useAuth } from '../context/AuthContext';
 import { LoginRequest } from '../types/auth';
 
@@ -10,11 +11,20 @@ interface LoginFormProps {
 
 export default function LoginForm({ onSwitchToRegister }: LoginFormProps) {
   const { login, isAuthenticated } = useAuth();
+  const router = useRouter();
   const [formData, setFormData] = useState<LoginRequest>({
     nombre_de_usuario: '',
     password: '',
   });
   const [isLoading, setIsLoading] = useState(false);
+
+  // Redirigir o forzar actualización cuando se autentique
+  useEffect(() => {
+    if (isAuthenticated) {
+      // Forzar actualización del router para que el Navbar se actualice
+      router.refresh();
+    }
+  }, [isAuthenticated, router]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;

@@ -37,8 +37,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       Cookies.set('authToken', response.token, { expires: 7 }); // 7 días
       Cookies.set('authUser', JSON.stringify(response.usuario), { expires: 7 });
       
+      // Actualizar estado de forma síncrona antes del SweetAlert
       setToken(response.token);
       setUser(response.usuario);
+
+      // Pequeño delay para asegurar que el estado se propague antes del SweetAlert
+      await new Promise(resolve => setTimeout(resolve, 100));
 
       await Swal.fire({
         icon: 'success',
