@@ -1,358 +1,224 @@
 import { environment } from '../config/environment';
 import {
+  AccionAsistenciaResponse,
   Asistencia,
-  AsistenciaCreateRequest,
-  AsistenciaUpdateRequest,
-  AsistenciasListResponse,
-  AsistenciasFiltros
+  AsistenciaBackend,
+  ListarAsistenciasQuery,
+  ListarAsistenciasResponse,
+  MarcarPresenteRequest,
+  MarcarPresenteResponse,
+  MisAsistenciasQuery,
+  MisAsistenciasResponse,
+  mapearAsistenciaBackend,
 } from '../types/asistencias';
 
-export class AsistenciaService {
+export class AsistenciasService {
   private static baseUrl = environment.backendUrl;
 
-  /**
-   * Listar asistencias del usuario autenticado
-   * GET /api/asistencias/
-   */
-  static async getAll(
-    filtros: AsistenciasFiltros,
-    token: string
-  ): Promise<AsistenciasListResponse> {
-    console.log('Obteniendo asistencias con filtros:', filtros);
-
-    // Construir query params
+  // Directivo: listar asistencias del día (genera si faltan)
+  static async listar(query: ListarAsistenciasQuery, token: string): Promise<ListarAsistenciasResponse> {
     const params = new URLSearchParams();
-    if (filtros.fecha_inicio) params.append('fecha_inicio', filtros.fecha_inicio);
-    if (filtros.fecha_fin) params.append('fecha_fin', filtros.fecha_fin);
-    if (filtros.estado) params.append('estado', filtros.estado);
-    if (filtros.horario_id) params.append('horario_id', filtros.horario_id.toString());
+    // Solo agregar fecha si está presente, si no, traerá asistencias de hoy por defecto
+    if (query.fecha) params.set('fecha', query.fecha);
+    if (query.estado !== undefined && query.estado !== '') params.set('estado', String(query.estado));
+    if (query.jornada !== undefined && query.jornada !== '') params.set('jornada', String(query.jornada));
+    if (query.sede !== undefined && query.sede !== '') params.set('sede', String(query.sede));
 
-    const queryString = params.toString();
-    const url = `${this.baseUrl}/asistencias/${queryString ? '?' + queryString : ''}`;
+    const url = `${this.baseUrl}/directivo/asistencias/?${params.toString()}`;
 
-    try {
-      const response = await fetch(url, {
-        method: 'GET',
-        headers: {
-          'Accept': 'application/json',
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        mode: 'cors',
-      });
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      mode: 'cors',
+    });
 
-      console.log('Response status:', response.status);
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('Error response:', errorText);
-
-        if (response.status === 401) {
-          throw new Error('Token de autenticación inválido');
-        } else if (response.status === 403) {
-          throw new Error('No tienes permisos para ver asistencias');
-        } else if (response.status >= 500) {
-          throw new Error('Error interno del servidor');
-        } else {
-          throw new Error(`Error del servidor: ${response.status}`);
-        }
-      }
-
-      const data: AsistenciasListResponse = await response.json();
-      console.log('Asistencias obtenidas exitosamente:', data);
-      return data;
-    } catch (error) {
-      console.error('Error completo:', error);
-
-      if (error instanceof TypeError && error.message.includes('fetch')) {
-        throw new Error(`Error de conexión. Verifica que el backend esté ejecutándose en ${this.baseUrl}`);
-      }
-
-      if (error instanceof Error) {
-        throw error;
-      }
-
-      throw new Error('Error de conexión desconocido');
+    if (!response.ok) {
+      if (response.status === 401 || response.status === 403) throw new Error('Sesión vencida o sin permisos');
+      if (response.status === 404) return { resultados: [] } as ListarAsistenciasResponse;
+      if (response.status === 400) throw new Error('Parámetros inválidos');
+      throw new Error(`Error del servidor: ${response.status}`);
     }
+
+    const data = await response.json();
+    
+    // Función helper para mapear asistencias del backend
+    const mapearAsistencias = (items: any[]): Asistencia[] => {
+      if (!Array.isArray(items)) return [];
+      return items.map(item => {
+        // Si ya tiene la estructura esperada, devolverla tal cual
+        if (item.usuario && item.horario) {
+          return item as Asistencia;
+        }
+        // Si tiene la estructura del backend, mapearla
+        if (item.monitor || item.monitor_id !== undefined) {
+          return mapearAsistenciaBackend(item as AsistenciaBackend);
+        }
+        // Fallback: intentar mapear
+        return mapearAsistenciaBackend(item as AsistenciaBackend);
+      });
+    };
+    
+    // Permitir tanto lista simple como objeto con resultados/asistencias
+    if (Array.isArray(data)) {
+      const asistenciasMapeadas = mapearAsistencias(data);
+      return { 
+        resultados: asistenciasMapeadas, 
+        asistencias: asistenciasMapeadas 
+      };
+    }
+    
+    // Manejar tanto 'resultados' como 'asistencias' (el backend usa 'asistencias')
+    const asistenciasRaw = Array.isArray(data?.asistencias) 
+      ? data.asistencias 
+      : Array.isArray(data?.resultados) 
+        ? data.resultados 
+        : [];
+    
+    const asistenciasMapeadas = mapearAsistencias(asistenciasRaw);
+    
+    return {
+      resultados: asistenciasMapeadas,
+      asistencias: asistenciasMapeadas,
+      total_asistencias: data?.total_asistencias ?? asistenciasMapeadas.length,
+      total_horas: data?.total_horas ?? 0,
+      monitores_distintos: data?.monitores_distintos ?? 0,
+    };
   }
 
-  /**
-   * Obtener una asistencia específica
-   * GET /api/asistencias/{id}/
-   */
-  static async getById(id: number, token: string): Promise<Asistencia> {
-    console.log('Obteniendo asistencia ID:', id);
+  // Directivo: autorizar asistencia
+  static async autorizar(id: number, token: string): Promise<AccionAsistenciaResponse> {
+    const url = `${this.baseUrl}/directivo/asistencias/${id}/autorizar/`;
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Accept': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      mode: 'cors',
+    });
 
-    try {
-      const response = await fetch(`${this.baseUrl}/asistencias/${id}/`, {
-        method: 'GET',
-        headers: {
-          'Accept': 'application/json',
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        mode: 'cors',
-      });
-
-      console.log('Response status:', response.status);
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('Error response:', errorText);
-
-        if (response.status === 401) {
-          throw new Error('Token de autenticación inválido');
-        } else if (response.status === 403) {
-          throw new Error('No tienes permisos para ver esta asistencia');
-        } else if (response.status === 404) {
-          throw new Error('Asistencia no encontrada');
-        } else if (response.status >= 500) {
-          throw new Error('Error interno del servidor');
-        } else {
-          throw new Error(`Error del servidor: ${response.status}`);
-        }
-      }
-
-      const data: Asistencia = await response.json();
-      console.log('Asistencia obtenida exitosamente:', data);
-      return data;
-    } catch (error) {
-      console.error('Error completo:', error);
-
-      if (error instanceof TypeError && error.message.includes('fetch')) {
-        throw new Error(`Error de conexión. Verifica que el backend esté ejecutándose en ${this.baseUrl}`);
-      }
-
-      if (error instanceof Error) {
-        throw error;
-      }
-
-      throw new Error('Error de conexión desconocido');
+    if (!response.ok) {
+      if (response.status === 401 || response.status === 403) throw new Error('Sesión vencida o sin permisos');
+      if (response.status === 404) throw new Error('La asistencia ya no existe');
+      throw new Error(`Error del servidor: ${response.status}`);
     }
+    return response.json();
   }
 
-  /**
-   * Crear una nueva asistencia
-   * POST /api/asistencias/
-   */
-  static async create(
-    asistenciaData: AsistenciaCreateRequest,
-    token: string
-  ): Promise<Asistencia> {
-    console.log('Creando asistencia con datos:', asistenciaData);
+  // Directivo: rechazar asistencia
+  static async rechazar(id: number, token: string): Promise<AccionAsistenciaResponse> {
+    const url = `${this.baseUrl}/directivo/asistencias/${id}/rechazar/`;
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Accept': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      mode: 'cors',
+    });
 
-    // Validar rango de horas antes de enviar
-    if (asistenciaData.horas < 0 || asistenciaData.horas > 24) {
-      throw new Error('Las horas deben estar entre 0 y 24');
+    if (!response.ok) {
+      if (response.status === 401 || response.status === 403) throw new Error('Sesión vencida o sin permisos');
+      if (response.status === 404) throw new Error('La asistencia ya no existe');
+      throw new Error(`Error del servidor: ${response.status}`);
     }
+    return response.json();
+  }
 
-    try {
-      const response = await fetch(`${this.baseUrl}/asistencias/`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-        mode: 'cors',
-        body: JSON.stringify(asistenciaData),
-      });
+  // Monitor: ver mis asistencias (genera si faltan)
+  static async misAsistencias(query: MisAsistenciasQuery, token: string): Promise<MisAsistenciasResponse> {
+    const params = new URLSearchParams();
+    // Solo agregar fecha si está presente, si no, traerá asistencias de hoy por defecto
+    if (query.fecha) params.set('fecha', query.fecha);
+    const url = `${this.baseUrl}/monitor/mis-asistencias/?${params.toString()}`;
+    
+    console.log('AsistenciasService.misAsistencias - URL:', url);
+    console.log('AsistenciasService.misAsistencias - Fecha:', query.fecha);
+    console.log('AsistenciasService.misAsistencias - Token:', token ? `${token.substring(0, 20)}...` : 'NO TOKEN');
 
-      console.log('Response status:', response.status);
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      mode: 'cors',
+    });
+    
+    console.log('AsistenciasService.misAsistencias - Status:', response.status);
+    console.log('AsistenciasService.misAsistencias - Headers:', Object.fromEntries(response.headers.entries()));
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('Error response:', errorText);
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.log('AsistenciasService.misAsistencias - Error response:', errorText);
+      
+      if (response.status === 401 || response.status === 403) throw new Error('Sesión vencida o sin permisos');
+      if (response.status === 404) return [];
+      throw new Error(`Error del servidor: ${response.status} - ${errorText}`);
+    }
+    return response.json();
+  }
 
-        let errorData;
+  // Monitor: marcar presente
+  static async marcar(body: MarcarPresenteRequest, token: string): Promise<MarcarPresenteResponse> {
+    const url = `${this.baseUrl}/monitor/marcar/`;
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      mode: 'cors',
+      body: JSON.stringify(body),
+    });
+
+    if (!response.ok) {
+      if (response.status === 401) throw new Error('Sesión vencida o sin permisos');
+      if (response.status === 403) {
+        // Intentar leer detalle del backend
         try {
-          errorData = JSON.parse(errorText);
-        } catch (e) {
-          errorData = null;
-        }
-
-        if (response.status === 401) {
-          throw new Error('Token de autenticación inválido');
-        } else if (response.status === 403) {
-          if (errorData?.detail) {
-            throw new Error(errorData.detail);
-          }
-          throw new Error('No tienes permisos para crear asistencias');
-        } else if (response.status === 400) {
-          // Errores de validación
-          if (errorData) {
-            // Error de unicidad
-            if (errorData.non_field_errors) {
-              throw new Error(errorData.non_field_errors[0]);
-            }
-            // Error de rango de horas
-            if (errorData.horas) {
-              throw new Error(errorData.horas[0]);
-            }
-            // Otros errores
-            const firstError = Object.values(errorData)[0];
-            if (Array.isArray(firstError)) {
-              throw new Error(firstError[0] as string);
-            }
-          }
-          throw new Error('Datos de asistencia inválidos');
-        } else if (response.status >= 500) {
-          throw new Error('Error interno del servidor');
-        } else {
-          throw new Error(`Error del servidor: ${response.status}`);
+          const data = await response.json();
+          const detail = (data && (data.detail || data.message)) || 'No autorizado';
+          throw new Error(detail);
+        } catch {
+          // si no es JSON, leer texto
+          const text = await response.text();
+          throw new Error(text || 'No autorizado');
         }
       }
-
-      const data: Asistencia = await response.json();
-      console.log('Asistencia creada exitosamente:', data);
-      return data;
-    } catch (error) {
-      console.error('Error completo:', error);
-
-      if (error instanceof TypeError && error.message.includes('fetch')) {
-        throw new Error(`Error de conexión. Verifica que el backend esté ejecutándose en ${this.baseUrl}`);
+      if (response.status === 400) {
+        const text = await response.text();
+        throw new Error(text || 'Solicitud inválida');
       }
-
-      if (error instanceof Error) {
-        throw error;
-      }
-
-      throw new Error('Error de conexión desconocido');
+      throw new Error(`Error del servidor: ${response.status}`);
     }
+    return response.json();
   }
 
-  /**
-   * Actualizar una asistencia
-   * PUT /api/asistencias/{id}/
-   */
-  static async update(
-    id: number,
-    asistenciaData: AsistenciaUpdateRequest,
-    token: string
-  ): Promise<Asistencia> {
-    console.log('Actualizando asistencia ID:', id, 'con datos:', asistenciaData);
-
-    // Validar rango de horas si se proporciona
-    if (asistenciaData.horas !== undefined && (asistenciaData.horas < 0 || asistenciaData.horas > 24)) {
-      throw new Error('Las horas deben estar entre 0 y 24');
-    }
-
-    try {
-      const response = await fetch(`${this.baseUrl}/asistencias/${id}/`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-        mode: 'cors',
-        body: JSON.stringify(asistenciaData),
-      });
-
-      console.log('Response status:', response.status);
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('Error response:', errorText);
-
-        let errorData;
-        try {
-          errorData = JSON.parse(errorText);
-        } catch (e) {
-          errorData = null;
-        }
-
-        if (response.status === 401) {
-          throw new Error('Token de autenticación inválido');
-        } else if (response.status === 403) {
-          throw new Error('No tienes permisos para editar esta asistencia');
-        } else if (response.status === 404) {
-          throw new Error('Asistencia no encontrada');
-        } else if (response.status === 400) {
-          if (errorData) {
-            if (errorData.horas) {
-              throw new Error(errorData.horas[0]);
-            }
-            const firstError = Object.values(errorData)[0];
-            if (Array.isArray(firstError)) {
-              throw new Error(firstError[0] as string);
-            }
-          }
-          throw new Error('Datos de asistencia inválidos');
-        } else if (response.status >= 500) {
-          throw new Error('Error interno del servidor');
-        } else {
-          throw new Error(`Error del servidor: ${response.status}`);
-        }
-      }
-
-      const data: Asistencia = await response.json();
-      console.log('Asistencia actualizada exitosamente:', data);
-      return data;
-    } catch (error) {
-      console.error('Error completo:', error);
-
-      if (error instanceof TypeError && error.message.includes('fetch')) {
-        throw new Error(`Error de conexión. Verifica que el backend esté ejecutándose en ${this.baseUrl}`);
-      }
-
-      if (error instanceof Error) {
-        throw error;
-      }
-
-      throw new Error('Error de conexión desconocido');
-    }
+  // Métodos adicionales para compatibilidad con AsistenciasManager (no se usan actualmente)
+  static async getAll(filtros: any, token: string): Promise<any> {
+    // Stub method - no implementado
+    throw new Error('Método no implementado');
   }
 
-  /**
-   * Eliminar una asistencia
-   * DELETE /api/asistencias/{id}/
-   */
+  static async update(id: number, data: any, token: string): Promise<any> {
+    // Stub method - no implementado
+    throw new Error('Método no implementado');
+  }
+
+  static async create(data: any, token: string): Promise<any> {
+    // Stub method - no implementado
+    throw new Error('Método no implementado');
+  }
+
   static async delete(id: number, token: string): Promise<void> {
-    console.log('Eliminando asistencia ID:', id);
-
-    try {
-      const response = await fetch(`${this.baseUrl}/asistencias/${id}/`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-        mode: 'cors',
-      });
-
-      console.log('Response status:', response.status);
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('Error response:', errorText);
-
-        if (response.status === 401) {
-          throw new Error('Token de autenticación inválido');
-        } else if (response.status === 403) {
-          throw new Error('No tienes permisos para eliminar asistencias');
-        } else if (response.status === 404) {
-          throw new Error('Asistencia no encontrada');
-        } else if (response.status >= 500) {
-          throw new Error('Error interno del servidor');
-        } else {
-          throw new Error(`Error del servidor: ${response.status}`);
-        }
-      }
-
-      console.log('Asistencia eliminada exitosamente');
-    } catch (error) {
-      console.error('Error completo:', error);
-
-      if (error instanceof TypeError && error.message.includes('fetch')) {
-        throw new Error(`Error de conexión. Verifica que el backend esté ejecutándose en ${this.baseUrl}`);
-      }
-
-      if (error instanceof Error) {
-        throw error;
-      }
-
-      throw new Error('Error de conexión desconocido');
-    }
+    // Stub method - no implementado
+    throw new Error('Método no implementado');
   }
 }
+
 

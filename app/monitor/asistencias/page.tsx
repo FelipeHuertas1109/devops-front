@@ -1,8 +1,8 @@
 'use client';
 
-import AsistenciasManager from '../../../components/AsistenciasManager';
+import React from 'react';
+import MonitorAsistencias from '../../../components/MonitorAsistencias';
 
-export default function MonitorAsistenciasPage() {
-  return <AsistenciasManager />;
+export default function Page() {
+  return <MonitorAsistencias />;
 }
-

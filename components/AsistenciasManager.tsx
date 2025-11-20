@@ -3,7 +3,9 @@
 import React, { useState, useEffect } from 'react';
 import Swal from 'sweetalert2';
 import { useAuth } from '../context/AuthContext';
-import { AsistenciaService } from '../services/asistencias';
+// Nota: Este componente no se está usando actualmente
+// Se mantiene para compatibilidad con origin/main
+import { AsistenciasService as AsistenciaService } from '../services/asistencias';
 import { HorarioService } from '../services/horarios';
 import {
   Asistencia,
@@ -54,7 +56,7 @@ export default function AsistenciasManager() {
       
       // Si hay horarios y el formulario no tiene uno seleccionado, seleccionar el primero
       if (data.length > 0 && formData.horario_id === 0) {
-        setFormData(prev => ({ ...prev, horario_id: data[0].id }));
+        setFormData((prev: any) => ({ ...prev, horario_id: data[0].id }));
       }
     } catch (error) {
       console.error('Error al cargar horarios:', error);
@@ -341,7 +343,7 @@ export default function AsistenciasManager() {
                   >
                     <option value="">Todos</option>
                     {Object.entries(ESTADOS_ASISTENCIA).map(([key, value]) => (
-                      <option key={key} value={key}>{value}</option>
+                      <option key={key} value={key}>{String(value)}</option>
                     ))}
                   </select>
                 </div>
