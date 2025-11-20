@@ -374,4 +374,3 @@ export class FinanzasService {
     return response.json();
   }
 }
-

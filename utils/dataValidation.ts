@@ -181,4 +181,3 @@ export function getValidationColor(isValid: boolean, hasWarnings: boolean): stri
   if (isValid && hasWarnings) return 'text-yellow-600';
   return 'text-red-600';
 }
-

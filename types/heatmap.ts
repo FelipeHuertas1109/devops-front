@@ -50,4 +50,3 @@ export interface ProcessedHeatmapData {
     porcentaje_asistencia: number;
   };
 }
-

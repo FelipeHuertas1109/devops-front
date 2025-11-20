@@ -120,4 +120,3 @@ export class HeatmapService {
     return Math.ceil(diferenciaTiempo / (1000 * 3600 * 24)) + 1;
   }
 }
-

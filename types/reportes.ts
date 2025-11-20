@@ -74,4 +74,3 @@ export interface ReporteHorasTodosResponse {
   };
   monitores: MonitorEnReporte[];
 }
-

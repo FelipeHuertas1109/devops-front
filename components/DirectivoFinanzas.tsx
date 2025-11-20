@@ -1,10 +1,10 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
 import Swal from 'sweetalert2';
-import { FinanzasService } from '../services/finanzas';
+import { FinanzasService } from '@/services/finanzas';
 import { 
   ResumenEjecutivo, 
   ReporteFinancieroTodos, 
@@ -12,7 +12,7 @@ import {
   ComparativaSemanas, 
   Configuracion,
   FinanzasQuery 
-} from '../types/finanzas';
+} from '@/types/finanzas';
 import { validateDataConsistency, ModuleData, ValidationResult } from '../utils/dataValidation';
 import DataValidationAlert from './DataValidationAlert';
 
@@ -76,7 +76,7 @@ export default function DirectivoFinanzas() {
       console.log('DirectivoFinanzas - cargarResumenEjecutivo: Datos recibidos:', data);
       setResumenEjecutivo(data);
       setServicioDisponible(true);
-      setError(null);
+      setError(null); // Limpiar errores previos
       console.log('DirectivoFinanzas - Servicio activado, datos cargados exitosamente');
     } catch (error) {
       console.error('DirectivoFinanzas - Error al cargar resumen ejecutivo:', error);
@@ -264,6 +264,7 @@ export default function DirectivoFinanzas() {
       try {
         setLoading(true);
         
+        // Actualizar en el backend usando la clave
         await FinanzasService.actualizarConfiguracion(config.clave, {
           clave: config.clave,
           valor: formValues.valor,
@@ -271,8 +272,10 @@ export default function DirectivoFinanzas() {
           tipo_dato: config.tipo_dato
         }, token!);
         
+        // Recargar configuraciones
         await cargarConfiguraciones();
         
+        // Recargar todos los datos financieros para reflejar los cambios
         console.log('Recargando datos financieros después de actualizar configuración...');
         setRecargandoDatos(true);
         
@@ -327,12 +330,14 @@ export default function DirectivoFinanzas() {
       return monitor.proyeccion_semestre.porcentaje_completado;
     }
 
+    // Buscar el monitor en los datos de total horas
     const monitorTotalHoras = totalHoras.monitores.find((m: any) => m.monitor.id === monitor.monitor.id);
     
     if (!monitorTotalHoras) {
       return monitor.proyeccion_semestre.porcentaje_completado;
     }
 
+    // Calcular progreso real: (horas trabajadas / horas totales del semestre) * 100
     const horasTrabajadas = monitor.finanzas_actuales.horas_trabajadas;
     const horasTotalesSemestre = monitorTotalHoras.horas_semestre;
     
@@ -341,7 +346,7 @@ export default function DirectivoFinanzas() {
     }
 
     const progresoReal = (horasTrabajadas / horasTotalesSemestre) * 100;
-    return Math.min(progresoReal, 100);
+    return Math.min(progresoReal, 100); // Máximo 100%
   };
 
   // Función para generar reporte
@@ -1127,4 +1132,3 @@ export default function DirectivoFinanzas() {
     </div>
   );
 }
-

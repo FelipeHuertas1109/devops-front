@@ -1107,4 +1107,3 @@ export default function DirectivoReportes() {
     </div>
   );
 }
-

@@ -1,17 +1,26 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '../context/AuthContext';
+import { features } from '../config/features';
 
 export default function Navbar() {
-  const { user, token, logout } = useAuth();
+  const { user, token, logout, isAuthenticated } = useAuth();
   const router = useRouter();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
-  if (!token || !user) {
+  // No renderizar en el servidor (evitar diferencias servidor/cliente)
+  // Esto asegura que el navbar solo se renderice en el cliente
+  if (typeof window === 'undefined') {
     return null;
+  }
+
+  // No mostrar contenido del navbar si no hay autenticación
+  // Pero renderizar el contenedor para que React pueda actualizarlo cuando cambie el estado
+  if (!isAuthenticated || !token || !user) {
+    return <nav className="bg-white shadow-lg border-b sticky top-0 z-50" suppressHydrationWarning />;
   }
 
   const isDirectivo = user.tipo_usuario === 'DIRECTIVO';
@@ -50,41 +59,85 @@ export default function Navbar() {
             {/* Navegación para Directivos */}
             {isDirectivo && (
               <>
-                <Link
-                  href="/directivo/horarios"
-                  className="px-3 py-2 rounded-lg text-lg hover:bg-green-100 hover:text-green-700 transition-all duration-300 transform hover:scale-110 hover:rotate-2"
-                  title="Horarios"
-                >
-                  📅
-                </Link>
-                <Link
-                  href="/directivo/ajustes-horas"
-                  className="px-3 py-2 rounded-lg text-lg hover:bg-yellow-100 hover:text-yellow-700 transition-all duration-300 transform hover:scale-110 hover:rotate-2"
-                  title="Ajustes"
-                >
-                  ⏰
-                </Link>
-                <Link
-                  href="/directivo/configuraciones"
-                  className="px-3 py-2 rounded-lg text-lg hover:bg-purple-100 hover:text-purple-700 transition-all duration-300 transform hover:scale-110 hover:-rotate-1"
-                  title="Configuraciones"
-                >
-                  ⚙️
-                </Link>
+                {features.directivo.asistencias.enabled && (
+                  <Link
+                    href="/directivo/asistencias"
+                    className="px-3 py-2 rounded-lg text-lg hover:bg-blue-100 hover:text-blue-700 transition-all duration-300 transform hover:scale-110 hover:-rotate-2"
+                    title="Asistencias"
+                  >
+                    👥
+                  </Link>
+                )}
+                {features.directivo.horarios.enabled && (
+                  <Link
+                    href="/directivo/horarios"
+                    className="px-3 py-2 rounded-lg text-lg hover:bg-green-100 hover:text-green-700 transition-all duration-300 transform hover:scale-110 hover:rotate-2"
+                    title="Horarios"
+                  >
+                    📅
+                  </Link>
+                )}
+                {features.directivo.heatmap.enabled && (
+                  <Link
+                    href="/directivo/heatmap"
+                    className="px-3 py-2 rounded-lg text-lg hover:bg-red-100 hover:text-red-700 transition-all duration-300 transform hover:scale-110 hover:rotate-3"
+                    title="Heatmap"
+                  >
+                    🔥
+                  </Link>
+                )}
+                {features.directivo.reportes.enabled && (
+                  <Link
+                    href="/directivo/reportes"
+                    className="px-3 py-2 rounded-lg text-lg hover:bg-purple-100 hover:text-purple-700 transition-all duration-300 transform hover:scale-110 hover:-rotate-1"
+                    title="Reportes"
+                  >
+                    📊
+                  </Link>
+                )}
+                {features.directivo.ajustesHoras.enabled && (
+                  <Link
+                    href="/directivo/ajustes-horas"
+                    className="px-3 py-2 rounded-lg text-lg hover:bg-yellow-100 hover:text-yellow-700 transition-all duration-300 transform hover:scale-110 hover:rotate-2"
+                    title="Ajustes"
+                  >
+                    ⏰
+                  </Link>
+                )}
+                {features.directivo.finanzas.enabled && (
+                  <Link
+                    href="/directivo/finanzas"
+                    className="px-3 py-2 rounded-lg text-lg hover:bg-emerald-100 hover:text-emerald-700 transition-all duration-300 transform hover:scale-110 hover:-rotate-2"
+                    title="Finanzas"
+                  >
+                    💰
+                  </Link>
+                )}
               </>
             )}
 
             {/* Navegación para Monitores */}
             {isMonitor && (
               <>
+                {features.monitor.asistencias.enabled && (
+                  <Link
+                    href="/monitor/asistencias"
+                    className="px-3 py-2 rounded-lg text-lg hover:bg-indigo-100 hover:text-indigo-700 transition-all duration-300 transform hover:scale-110 hover:rotate-2"
+                    title="Mis Asistencias"
+                  >
+                    📝
+                  </Link>
+                )}
                 {/* Horarios para monitores */}
-                <Link
-                  href="/horarios"
-                  className="px-3 py-2 rounded-lg text-lg hover:bg-green-100 hover:text-green-700 transition-all duration-300 transform hover:scale-110 hover:-rotate-1"
-                  title="Horarios"
-                >
-                  📋
-                </Link>
+                {features.monitor.horarios.enabled && (
+                  <Link
+                    href="/horarios"
+                    className="px-3 py-2 rounded-lg text-lg hover:bg-green-100 hover:text-green-700 transition-all duration-300 transform hover:scale-110 hover:-rotate-1"
+                    title="Horarios"
+                  >
+                    📋
+                  </Link>
+                )}
               </>
             )}
           </div>
@@ -140,45 +193,93 @@ export default function Navbar() {
               {/* Navegación para Directivos */}
               {isDirectivo && (
                 <>
-                  <Link
-                    href="/directivo/horarios"
-                    className="block px-3 py-2 rounded-lg text-lg hover:bg-green-100 hover:text-green-700 transition-all duration-300 transform hover:scale-105 hover:translate-x-2"
-                    onClick={() => setIsMenuOpen(false)}
-                    title="Horarios"
-                  >
-                    📅 Horarios
-                  </Link>
-                  <Link
-                    href="/directivo/ajustes-horas"
-                    className="block px-3 py-2 rounded-lg text-lg hover:bg-yellow-100 hover:text-yellow-700 transition-all duration-300 transform hover:scale-105 hover:translate-x-2"
-                    onClick={() => setIsMenuOpen(false)}
-                    title="Ajustes"
-                  >
-                    ⏰ Ajustes
-                  </Link>
-                  <Link
-                    href="/directivo/configuraciones"
-                    className="block px-3 py-2 rounded-lg text-lg hover:bg-purple-100 hover:text-purple-700 transition-all duration-300 transform hover:scale-105 hover:translate-x-2"
-                    onClick={() => setIsMenuOpen(false)}
-                    title="Configuraciones"
-                  >
-                    ⚙️ Configuraciones
-                  </Link>
+                  {features.directivo.asistencias.enabled && (
+                    <Link
+                      href="/directivo/asistencias"
+                      className="block px-3 py-2 rounded-lg text-lg hover:bg-blue-100 hover:text-blue-700 transition-all duration-300 transform hover:scale-105 hover:translate-x-2"
+                      onClick={() => setIsMenuOpen(false)}
+                      title="Asistencias"
+                    >
+                      👥 Asistencias
+                    </Link>
+                  )}
+                  {features.directivo.horarios.enabled && (
+                    <Link
+                      href="/directivo/horarios"
+                      className="block px-3 py-2 rounded-lg text-lg hover:bg-green-100 hover:text-green-700 transition-all duration-300 transform hover:scale-105 hover:translate-x-2"
+                      onClick={() => setIsMenuOpen(false)}
+                      title="Horarios"
+                    >
+                      📅 Horarios
+                    </Link>
+                  )}
+                  {features.directivo.heatmap.enabled && (
+                    <Link
+                      href="/directivo/heatmap"
+                      className="block px-3 py-2 rounded-lg text-lg hover:bg-red-100 hover:text-red-700 transition-all duration-300 transform hover:scale-105 hover:translate-x-2"
+                      onClick={() => setIsMenuOpen(false)}
+                      title="Heatmap"
+                    >
+                      🔥 Heatmap
+                    </Link>
+                  )}
+                  {features.directivo.reportes.enabled && (
+                    <Link
+                      href="/directivo/reportes"
+                      className="block px-3 py-2 rounded-lg text-lg hover:bg-purple-100 hover:text-purple-700 transition-all duration-300 transform hover:scale-105 hover:translate-x-2"
+                      onClick={() => setIsMenuOpen(false)}
+                      title="Reportes"
+                    >
+                      📊 Reportes
+                    </Link>
+                  )}
+                  {features.directivo.ajustesHoras.enabled && (
+                    <Link
+                      href="/directivo/ajustes-horas"
+                      className="block px-3 py-2 rounded-lg text-lg hover:bg-yellow-100 hover:text-yellow-700 transition-all duration-300 transform hover:scale-105 hover:translate-x-2"
+                      onClick={() => setIsMenuOpen(false)}
+                      title="Ajustes"
+                    >
+                      ⏰ Ajustes
+                    </Link>
+                  )}
+                  {features.directivo.finanzas.enabled && (
+                    <Link
+                      href="/directivo/finanzas"
+                      className="block px-3 py-2 rounded-lg text-lg hover:bg-emerald-100 hover:text-emerald-700 transition-all duration-300 transform hover:scale-105 hover:translate-x-2"
+                      onClick={() => setIsMenuOpen(false)}
+                      title="Finanzas"
+                    >
+                      💰 Finanzas
+                    </Link>
+                  )}
                 </>
               )}
 
               {/* Navegación para Monitores */}
               {isMonitor && (
                 <>
+                  {features.monitor.asistencias.enabled && (
+                    <Link
+                      href="/monitor/asistencias"
+                      className="block px-3 py-2 rounded-lg text-lg hover:bg-indigo-100 hover:text-indigo-700 transition-all duration-300 transform hover:scale-105 hover:translate-x-2"
+                      onClick={() => setIsMenuOpen(false)}
+                      title="Mis Asistencias"
+                    >
+                      📝 Mis Asistencias
+                    </Link>
+                  )}
                   {/* Horarios para monitores */}
-                  <Link
-                    href="/horarios"
-                    className="block px-3 py-2 rounded-lg text-lg hover:bg-green-100 hover:text-green-700 transition-all duration-300 transform hover:scale-105 hover:translate-x-2"
-                    onClick={() => setIsMenuOpen(false)}
-                    title="Horarios"
-                  >
-                    📋 Horarios
-                  </Link>
+                  {features.monitor.horarios.enabled && (
+                    <Link
+                      href="/horarios"
+                      className="block px-3 py-2 rounded-lg text-lg hover:bg-green-100 hover:text-green-700 transition-all duration-300 transform hover:scale-105 hover:translate-x-2"
+                      onClick={() => setIsMenuOpen(false)}
+                      title="Horarios"
+                    >
+                      📋 Horarios
+                    </Link>
+                  )}
                 </>
               )}
 

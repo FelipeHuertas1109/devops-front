@@ -205,4 +205,3 @@ export interface FinanzasQuery {
   sede?: 'SA' | 'BA';
   jornada?: 'M' | 'T';
 }
-
