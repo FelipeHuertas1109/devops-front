@@ -39,6 +39,12 @@ const withPWA = require('next-pwa')({
 });
 
 const nextConfig: NextConfig = {
+  // Configuración de Turbopack para evitar advertencias sobre el root
+  experimental: {
+    turbo: {
+      resolveAlias: {},
+    },
+  },
   async rewrites() {
     return [
       {
