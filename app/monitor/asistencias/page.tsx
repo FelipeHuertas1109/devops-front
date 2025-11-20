@@ -6,5 +6,3 @@ import MonitorAsistencias from '../../../components/MonitorAsistencias';
 export default function Page() {
   return <MonitorAsistencias />;
 }
-
-

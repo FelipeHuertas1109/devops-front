@@ -119,4 +119,64 @@ export interface MarcarPresenteRequest {
 
 export interface MarcarPresenteResponse extends Asistencia {}
 
+// Tipos adicionales para compatibilidad con archivos de origin/main
+export interface AsistenciaCreateRequest {
+  horario_id: number;
+  fecha: string; // Formato: YYYY-MM-DD
+  presente: boolean;
+  horas: number;
+}
+
+export interface AsistenciaUpdateRequest {
+  presente?: boolean;
+  horas?: number;
+  estado_autorizacion?: EstadoAutorizacion;
+}
+
+export interface AsistenciasFiltros {
+  fecha_inicio?: string; // Formato: YYYY-MM-DD
+  fecha_fin?: string; // Formato: YYYY-MM-DD
+  estado?: EstadoAutorizacion;
+  horario_id?: number;
+}
+
+export interface AsistenciasListResponse {
+  total_asistencias: number;
+  total_horas: number;
+  asistencias: Asistencia[];
+}
+
+export interface AsistenciasDirectivoResponse {
+  total_asistencias: number;
+  total_horas: number;
+  monitores_distintos: number;
+  asistencias: Asistencia[];
+}
+
+export interface AsistenciasDirectivoFiltros {
+  usuario_id?: number;
+  fecha_inicio?: string; // Formato: YYYY-MM-DD
+  fecha_fin?: string; // Formato: YYYY-MM-DD
+  estado?: EstadoAutorizacion;
+  sede?: 'SA' | 'BA';
+}
+
+export interface AutorizarAsistenciaRequest {
+  estado_autorizacion: EstadoAutorizacion;
+}
+
+// Mapeo de estados para UI
+export const ESTADOS_ASISTENCIA: Record<EstadoAutorizacion, string> = {
+  pendiente: 'Pendiente',
+  autorizado: 'Autorizado',
+  rechazado: 'Rechazado'
+};
+
+// Colores para estados en la UI
+export const COLORES_ESTADOS: Record<EstadoAutorizacion, string> = {
+  pendiente: 'bg-yellow-100 text-yellow-800',
+  autorizado: 'bg-green-100 text-green-800',
+  rechazado: 'bg-red-100 text-red-800'
+};
+
 

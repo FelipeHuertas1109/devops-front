@@ -198,6 +198,27 @@ export class AsistenciasService {
     }
     return response.json();
   }
+
+  // Métodos adicionales para compatibilidad con AsistenciasManager (no se usan actualmente)
+  static async getAll(filtros: any, token: string): Promise<any> {
+    // Stub method - no implementado
+    throw new Error('Método no implementado');
+  }
+
+  static async update(id: number, data: any, token: string): Promise<any> {
+    // Stub method - no implementado
+    throw new Error('Método no implementado');
+  }
+
+  static async create(data: any, token: string): Promise<any> {
+    // Stub method - no implementado
+    throw new Error('Método no implementado');
+  }
+
+  static async delete(id: number, token: string): Promise<void> {
+    // Stub method - no implementado
+    throw new Error('Método no implementado');
+  }
 }
 
 
